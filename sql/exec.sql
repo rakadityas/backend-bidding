@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS product (
   update_time TIMESTAMP
 );
 
-DROP TABLE IF EXISTS user;
-CREATE TABLE IF NOT EXISTS user (
+DROP TABLE IF EXISTS "user";
+CREATE TABLE IF NOT EXISTS "user" (
   id SERIAL PRIMARY KEY,
   user_type INT NOT NULL,
   username VARCHAR(20) NOT NULL UNIQUE,
@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS payment (
 );
 
 INSERT INTO product(user_id, product_name, image_url, "status", create_time, update_time) VALUES 
-(1, 'Dummy product 1', "https://bit.ly/3tVq57y", 1, 'NOW()', 'NOW()'),
-(2, 'Dummy product 2', "https://bit.ly/3MVCxwO", 1, 'NOW()', 'NOW()');
+(1, 'Dummy product 1', 'https://bit.ly/3tVq57y', 1, 'NOW()', 'NOW()'),
+(2, 'Dummy product 2', 'https://bit.ly/3MVCxwO', 1, 'NOW()', 'NOW()');
 
 
 INSERT INTO "user" (user_type, username, "password", "status", create_time) VALUES

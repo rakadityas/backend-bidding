@@ -12,108 +12,142 @@ const (
 
 // User table
 type User struct {
-	ID       int64  `json:"id"`
-	UserType int    `json:"user_type"`
-	Username string `json:"username"`
-	Status   int    `json:"status"`
-	Balance  int64  `json:"balance"`
+	ID       int64
+	UserType int
+	Username string
+	Status   int
+	Balance  int64
 }
 
 // Product table
 type Product struct {
-	ID          int64  `json:"id"`
-	UserID      int64  `json:"user_id"`
-	ProductName string `json:"product_name"`
-	ImageURL    string `json:"image_url"`
-	Status      int    `json:"status"`
+	ID          int64
+	UserID      int64
+	ProductName string
+	ImageURL    string
+	Status      int
 }
 
 // ProductDetail table
 type ProductDetail struct {
+	Product Product
+	Auction Auction
 }
 
 // TimeWindow table
 type TimeWindow struct {
-	ID            int64     `json:"id"`
-	ReferenceID   int64     `json:"reference_id"`
-	ReferenceType int       `json:"reference_type"`
-	StartTime     time.Time `json:"start_time"`
-	EndTime       time.Time `json:"end_time"`
-	Status        int       `json:"status"`
+	ID        int64
+	StartTime time.Time
+	EndTime   time.Time
+	Status    int
 }
 
 // Auction table
 type Auction struct {
-	ID           int64 `json:"id"`
-	ProductID    int64 `json:"product_id"`
-	WinnerUserID int64 `json:"winner_user_id"`
-	Multiplier   int64 `json:"multiplier"`
-	Status       int   `json:"status"`
+	ID           int64
+	ProductID    int64
+	WinnerUserID int64
+	Multiplier   int64
+	Status       int
 }
 
 // BidCollection table
 type BidCollection struct {
-	ID         int64 `json:"id"`
-	UserID     int64 `json:"user_id"`
-	AuctionID  int64 `json:"auction_id"`
-	CurrentBid int64 `json:"current_bid"`
-	PaymentID  int64 `json:"payment_id"`
+	ID         int64
+	UserID     int64
+	AuctionID  int64
+	CurrentBid int64
+	PaymentID  int64
 }
 
 // Payment table
 type Payment struct {
-	ID     int64 `json:"id"`
-	UserID int64 `json:"user_id"`
-	Amount int64 `json:"amount"`
-	Status int   `json:"status"`
+	ID     int64
+	UserID int64
+	Amount int64
+	Status int
 }
 
-type UserInfo struct {
-}
+// /get/auction/detail
+type (
+	GetAuctionDetailRequest struct {
+		ProductID int64
+		UserID    int64
+	}
 
-type GetAuctionDetailRequest struct {
-	ProductID int64 `json:product_id`
-	UserID    int64 `json:user_id`
-}
+	GetAuctionDetailResponse struct {
+		ProductDetail ProductDetail
+	}
+)
 
-type GetUserInfoRequest struct {
-	UserID int64 `json:user_id`
-}
+// /get/user/info
+type (
+	GetUserInfoRequest struct {
+		UserID int64
+	}
 
-type GetAuctionListRequest struct {
-	UserID  int64 `json:user_id`
-	SortAsc bool  `json:sort_asc`
-}
+	GetUserInfoResposne struct {
+		UserInfo User
+	}
+)
 
-type LoginRequest struct {
-	Username string `json:username`
-	Password string `json:password`
-}
+// /get/auction/list
+type (
+	GetAuctionListRequest struct {
+		UserID  int64
+		SortAsc bool
+	}
 
-type CreateAuctionRequest struct {
-	ProductName     string    `json:product_name`
-	ProductImageUrl string    `json:product_image_url`
-	StartBid        int64     `json:start_bid`
-	Multiplier      int       `json:multiplier`
-	Date            time.Time `json:date`
-	ShopID          string    `json:shop_id`
-	UserID          string    `json:user_id`
-}
+	GetAuctionListResponse struct {
+		ProductDetail []ProductDetail
+	}
+)
 
-type GetAuctionDetailResponse struct {
-	ProductDetail ProductDetail `json:product_detail`
-	Auction       Auction       `json:auction`
-}
+// /login
+type (
+	LoginRequest struct {
+		Username string
+		Password string
+	}
 
-type GetUserInfoResposne struct {
-	UserInfo UserInfo `json:user_info`
-}
+	LoginResponse struct {
+		Status int
+	}
+)
 
-type GetAuctionListResponse struct {
-}
+// /auction/create
+type (
+	CreateAuctionRequest struct {
+		ProductName     string
+		ProductImageURL string
+		StartBid        int64
+		Multiplier      int
+		Date            time.Time
+		ShopID          string
+		UserID          string
+	}
 
-type LoginResponse struct {
-}
+	CreateAuctionResponse struct {
+		ResultStatus ResultStatus
+	}
+)
 
-type CreateAuctionResponse struct {
-}
+// /auction/bid
+type (
+	AuctionBidRequest struct {
+		UserID    int64
+		ProductID int64
+		Amount    int64
+	}
+
+	AuctionBidResponse struct {
+		ResultStatus ResultStatus
+	}
+)
+
+type (
+	ResultStatus struct {
+		Message   string
+		IsSuccess bool
+	}
+)
