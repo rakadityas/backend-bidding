@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
@@ -15,19 +16,15 @@ var (
 	producer *nsq.Producer
 )
 
-type messageHandler struct{}
-
-type Message struct {
-	Name      string
-	Content   string
-	Timestamp string
-}
+type mhUpdateScoreBoard struct{}
+type mhInsertCollectionAndPayment struct{}
 
 func DoPublishNSQ(topic string, msg interface{}) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		log.Println(err)
 	}
+
 	//Publish the Message
 	err = producer.Publish(topic, payload)
 	if err != nil {
@@ -50,21 +47,45 @@ func initProducer() {
 	}
 }
 
-func initConsumer() {
+func GetConfigGeneral() *nsq.Config {
 	config := nsq.NewConfig()
 	config.MaxAttempts = 10
 	config.MaxInFlight = 5
 	config.MaxRequeueDelay = time.Second * 900
 	config.DefaultRequeueDelay = time.Second * 0
+	return config
+}
+
+func GetConfigTopicUpdateScoreBoard() *nsq.Config {
+	config := nsq.NewConfig()
+	config.MaxAttempts = 10
+	config.MaxInFlight = 1
+	config.MaxRequeueDelay = time.Second * 900
+	config.DefaultRequeueDelay = time.Second * 0
+	return config
+}
+
+func initConsumer() {
 
 	//Creating the consumer
-	consumer, err := nsq.NewConsumer("Topic_Example", "Channel_Example", config)
+	cUpdateScoreBoard, err := nsq.NewConsumer("Update_Scoreboard", "update_scoreboard", GetConfigTopicUpdateScoreBoard())
 	if err != nil {
 		log.Fatal(err)
 	}
-	consumer.AddHandler(&messageHandler{})
+	cUpdateScoreBoard.AddHandler(&mhUpdateScoreBoard{})
 
-	err = consumer.ConnectToNSQLookupd("localhost:4161")
+	cInsertCollectionAndPayment, err := nsq.NewConsumer("Insert_Collection_And_Payment", "insert_collection_and_payment", GetConfigGeneral())
+	if err != nil {
+		log.Fatal(err)
+	}
+	cInsertCollectionAndPayment.AddHandler(&mhInsertCollectionAndPayment{})
+
+	err = cUpdateScoreBoard.ConnectToNSQLookupd("localhost:4161")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cInsertCollectionAndPayment.ConnectToNSQLookupd("localhost:4161")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,26 +94,49 @@ func initConsumer() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
-	consumer.Stop()
+
+	cUpdateScoreBoard.Stop()
+	cInsertCollectionAndPayment.Stop()
 }
 
 // HandleMessage implements the Handler interface.
-func (h *messageHandler) HandleMessage(m *nsq.Message) error {
-	//Process the Message
-	var request Message
+func (h *mhUpdateScoreBoard) HandleMessage(m *nsq.Message) error {
+
+	var request UpdateScoreboardNSQ
+
+	ctx := context.Background()
+
 	if err := json.Unmarshal(m.Body, &request); err != nil {
 		log.Println("Error when Unmarshaling the message body, Err : ", err)
-		// Returning a non-nil error will automatically send a REQ command to NSQ to re-queue the message.
 		return err
 	}
-	//Print the Message
-	log.Println("Message")
-	log.Println("--------------------")
-	log.Println("Name : ", request.Name)
-	log.Println("Content : ", request.Content)
-	log.Println("Timestamp : ", request.Timestamp)
-	log.Println("--------------------")
-	log.Println("")
-	// Will automatically set the message as finish
+
+	CheckHighestBid(ctx, request.BidAmount, request.UserID)
+
+	m.Finish()
+	return nil
+}
+
+func (h *mhInsertCollectionAndPayment) HandleMessage(m *nsq.Message) error {
+
+	var (
+		err     error
+		request InsertPaymentAndBidCollectionNSQ
+	)
+
+	ctx := context.Background()
+
+	if err := json.Unmarshal(m.Body, &request); err != nil {
+		log.Println("Error when Unmarshaling the message body, Err : ", err)
+		return err
+	}
+
+	err = InsertBidCollectionAndPayment(ctx, request.BidCollection, request.Payment)
+	if err != nil {
+		log.Println("error: ", err)
+		return err
+	}
+
+	m.Finish()
 	return nil
 }

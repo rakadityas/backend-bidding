@@ -7,17 +7,16 @@ import (
 )
 
 var (
-	Client *redis.Client
+	RedisClient *redis.Client
 )
 
 func initRedis() {
-	Client = redis.NewClient(&redis.Options{
+	RedisClient = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
 	})
 
-	pong, err := Client.Ping().Result()
+	pong, err := RedisClient.Ping().Result()
 	fmt.Println(pong, err)
-
 }

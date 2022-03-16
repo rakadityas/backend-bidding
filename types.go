@@ -77,6 +77,7 @@ type (
 
 	GetAuctionDetailResponse struct {
 		ProductDetail ProductDetail
+		HighestBid    int64
 	}
 )
 
@@ -111,7 +112,7 @@ type (
 	}
 
 	LoginResponse struct {
-		Status int
+		User int
 	}
 )
 
@@ -149,5 +150,18 @@ type (
 	ResultStatus struct {
 		Message   string
 		IsSuccess bool
+	}
+)
+
+type (
+	UpdateScoreboardNSQ struct {
+		UserID, BidAmount int64
+	}
+)
+
+type (
+	InsertPaymentAndBidCollectionNSQ struct {
+		Payment       Payment
+		BidCollection BidCollection
 	}
 )

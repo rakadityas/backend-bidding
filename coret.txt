@@ -1,0 +1,38 @@
+==========================
+> API: http bidding
+ - double request TTL
+ - get bid collection (user id, product id)
+    - bidded balance sum
+ - check balance query ke user get blanace (current bid - bidded balance)
+    - message "wow balance invalid"
+ - deduct balance
+ - publish NSQ topic A: update redis
+ - publish NSQ topic B: insert payment
+ - return front end
+
+> TOPIC UpdateScoreBoard (func CheckHighestBid)
+ - check redis current highest bid / leaderboard
+   - update current highest bid / leaderboard
+ - ctx.finish (krn maxinflight 1)
+
+> TOPIC B
+ - create payment
+ - create bid_collection
+
+=============================
+> CRON: stop auction
+- get all auction where timewindow expired (join query)
+- publish topic C
+
+> TOPIC C: deactivate Auction
+- deactivate Auction list
+
+=============================
+
+
+
+Redis use cases
+- (new entry) ZADD --> ZADD BID [BID_VALUE] [USER_ID]
+- (get top) ZREVRANGE currentBid 0 0 withscores
+- TTL
+- 

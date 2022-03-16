@@ -4,6 +4,6 @@ func main() {
 	initDB()
 	initRedis()
 	initProducer()
-	initConsumer()
+	// initConsumer()
 	initHTTP()
 }

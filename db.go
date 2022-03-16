@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -83,6 +84,76 @@ func GetProductDB(ctx context.Context, productID int64) (product Product, err er
 	return product, nil
 }
 
+func GetSumBidCollection(ctx context.Context, userID, auctionID int64) (highestBid int64, err error) {
+	err = db.QueryRowContext(ctx, queryGetSumBidCollection, userID, auctionID).Scan(
+		&highestBid,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return highestBid, nil
+}
+
+func UpdateBalance(ctx context.Context, userID, amount int64) (err error) {
+	_, err = db.ExecContext(ctx, queryUpdateBalance, amount, userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func InsertPayment(ctx context.Context, payment Payment) (int64, error) {
+
+	result, err := db.ExecContext(ctx, queryInsertPayment,
+		payment.UserID,
+		payment.Amount,
+		payment.Status,
+		time.Now(),
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	paymentID, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return paymentID, nil
+}
+
+func InsertBidCollection(ctx context.Context, bidCollection BidCollection) (err error) {
+
+	_, err = db.ExecContext(ctx, queryInsertBidCollection,
+		bidCollection.UserID,
+		bidCollection.AuctionID,
+		bidCollection.CurrentBid,
+		bidCollection.PaymentID,
+		time.Now(),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetUser(ctx context.Context, username, password string) (userData User, err error) {
+
+	err = db.QueryRowContext(ctx, queryGetUserLogin, username, password).Scan(
+		&userData.ID,
+		&userData.UserType,
+		&userData.Username,
+		&userData.Status,
+	)
+	if err != nil {
+		return User{}, err
+	}
+
+	return userData, nil
+}
+
 const (
 	queryGetUserInfoDB string = `
 		SELECT 
@@ -121,4 +192,59 @@ const (
 		WHERE 
 			user_id = $1
 	`
+
+	queryGetSumBidCollection string = `
+	SELECT 
+		sum(current_bid)
+	FROM 
+		bid_collection
+	WHERE 
+		user_id = $1 and auction_id = $2;
+    `
+
+	queryUpdateBalance string = `
+	UPDATE 
+		"user"
+	SET 
+		balance = $1
+	WHERE 
+		user_id = $2;
+    `
+
+	queryInsertPayment string = `
+	INSERT INTO 
+		payment (
+			user_id,
+			amount,
+			"status",
+			create_time
+		)
+	VALUES ($1, $2, $3, $4)
+	RETURNING
+		id
+	`
+
+	queryInsertBidCollection string = `
+	INSERT INTO 
+		bid_collection (
+			user_id,
+			auction_id,
+			current_bid,
+			payment_id,
+			create_time
+		)
+	VALUES ($1, $2, $3, $4, $5)
+	`
+
+	queryGetUserLogin string = `
+	SELECT 
+	COALESCE(id, 0) as id, 
+	COALESCE(user_type, 0) as user_type, 
+	COALESCE(username, '') as username,
+	COALESCE("status", 0) as "status"
+	FROM
+		"user"
+	WHERE 
+		username = $1 AND	password = $2
+`
 )

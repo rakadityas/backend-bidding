@@ -11,12 +11,33 @@ import (
 )
 
 func HandleLogin(rw http.ResponseWriter, req *http.Request) {
-	_, err := ioutil.ReadAll(req.Body)
+	var request LoginRequest
+
+	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 
-	req.FormValue("payment_id")
+	if err := jsoniter.Unmarshal(body, &request); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user, err := Login(req.Context(), request.Username, request.Password)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	resp, err := jsoniter.Marshal(user)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Write([]byte(resp))
+	return
 }
 
 func HandleGetUserInfo(rw http.ResponseWriter, req *http.Request) {
@@ -83,6 +104,39 @@ func HandleGetAuctionDetail(rw http.ResponseWriter, req *http.Request) {
 
 }
 
+func HandleAuctionBidding(rw http.ResponseWriter, req *http.Request) {
+
+	ctx := req.Context()
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var payload AuctionBidRequest
+
+	err = jsoniter.Unmarshal(body, &payload)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	response, err := AuctionBidding(ctx, payload)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	resp, err := jsoniter.Marshal(response)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Write([]byte(resp))
+}
+
 func initHTTP() {
 	// get
 	http.HandleFunc("/get/auction/detail", HandleGetAuctionDetail)
@@ -91,7 +145,7 @@ func initHTTP() {
 
 	// post
 	http.HandleFunc("/auction/create", HandleLogin)
-	http.HandleFunc("/auction/bid", HandleLogin)
+	http.HandleFunc("/auction/bid", HandleAuctionBidding)
 	http.HandleFunc("/login", HandleLogin)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
