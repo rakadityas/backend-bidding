@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS "user" (
   username VARCHAR(20) NOT NULL UNIQUE,
   "password" VARCHAR(30) NOT NULL UNIQUE,
   "status" INT,
+  balance INT,
   create_time TIMESTAMP,
   update_time TIMESTAMP
 );
@@ -68,9 +69,9 @@ INSERT INTO product(user_id, product_name, image_url, "status", create_time, upd
 (2, 'Dummy product 2', 'https://bit.ly/3MVCxwO', 1, 'NOW()', 'NOW()');
 
 
-INSERT INTO "user" (user_type, username, "password", "status", create_time) VALUES
-(1, 'testuser1', 'testuser1', 1, now()),
-(0, 'testuser2', 'testuser2', 1, now());
+INSERT INTO "user" (user_type, username, "password", "status", create_time, balance) VALUES
+(1, 'testuser1', 'testuser1', 1, now(), 10000),
+(0, 'testuser2', 'testuser2', 1, now(), 10000);
 
 INSERT INTO auction (product_id, winner_user_id, multiplier, "status", create_time) VALUES
 (1, NULL, 10000, 1, now()),

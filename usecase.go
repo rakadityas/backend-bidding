@@ -163,3 +163,5 @@ func Login(ctx context.Context, username, password string) (User, error) {
 
 	return user, nil
 }
+
+// func CreateAuction()

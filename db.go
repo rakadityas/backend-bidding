@@ -44,6 +44,7 @@ func GetUserInfoDB(ctx context.Context, userID int64) (userData User, err error)
 		&userData.UserType,
 		&userData.Username,
 		&userData.Status,
+		&userData.Balance,
 	)
 	if err != nil {
 		return User{}, err
@@ -146,6 +147,7 @@ func GetUser(ctx context.Context, username, password string) (userData User, err
 		&userData.UserType,
 		&userData.Username,
 		&userData.Status,
+		&userData.Balance,
 	)
 	if err != nil {
 		return User{}, err
@@ -160,7 +162,8 @@ const (
 		COALESCE(id, 0) as id, 
 		COALESCE(user_type, 0) as user_type, 
 		COALESCE(username, '') as username,
-		COALESCE("status", 0) as "status"
+		COALESCE("status", 0) as "status",
+		COALESCE(balance, 0) as balance
 		FROM
 			"user"
 		WHERE
@@ -195,7 +198,7 @@ const (
 
 	queryGetSumBidCollection string = `
 	SELECT 
-		sum(current_bid)
+		COALESCE(sum(current_bid), 0) as current_bid
 	FROM 
 		bid_collection
 	WHERE 
@@ -208,7 +211,7 @@ const (
 	SET 
 		balance = $1
 	WHERE 
-		user_id = $2;
+		id = $2;
     `
 
 	queryInsertPayment string = `
@@ -241,7 +244,8 @@ const (
 	COALESCE(id, 0) as id, 
 	COALESCE(user_type, 0) as user_type, 
 	COALESCE(username, '') as username,
-	COALESCE("status", 0) as "status"
+	COALESCE("status", 0) as "status",
+	COALESCE(balance, 0) as balance
 	FROM
 		"user"
 	WHERE 
