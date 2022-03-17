@@ -7,6 +7,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/lib/pq v1.10.4
 	github.com/nsqio/go-nsq v1.1.0
+	github.com/rs/cors v1.8.3-0.20220223021805-a4a5ce87d5a2
 )
 
 require (

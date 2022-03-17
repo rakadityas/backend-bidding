@@ -111,7 +111,7 @@ func (h *mhUpdateScoreBoard) HandleMessage(m *nsq.Message) error {
 		return err
 	}
 
-	CheckHighestBid(ctx, request.BidAmount, request.UserID)
+	CheckHighestBid(ctx, request.BidAmount, request.UserID, request.AuctionID)
 
 	m.Finish()
 	return nil

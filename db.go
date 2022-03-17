@@ -71,7 +71,7 @@ func GetAuctionDB(ctx context.Context, productID int64) (auction Auction, err er
 
 func GetProductDB(ctx context.Context, productID int64) (product Product, err error) {
 
-	err = db.QueryRowContext(ctx, queryGetAuction, productID).Scan(
+	err = db.QueryRowContext(ctx, queryGetProduct, productID).Scan(
 		&product.ID,
 		&product.UserID,
 		&product.ProductName,
@@ -83,6 +83,30 @@ func GetProductDB(ctx context.Context, productID int64) (product Product, err er
 	}
 
 	return product, nil
+}
+
+func GetProductByUserIDDB(ctx context.Context, userID int64) (products []Product, err error) {
+
+	rows, err := db.QueryContext(ctx, queryGetProductByUserID, userID)
+	if err != nil {
+		return []Product{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var product Product
+		rows.Scan(
+			&product.ID,
+			&product.UserID,
+			&product.ProductName,
+			&product.ImageURL,
+			&product.Status,
+		)
+
+		products = append(products, product)
+	}
+
+	return products, nil
 }
 
 func GetSumBidCollection(ctx context.Context, userID, auctionID int64) (highestBid int64, err error) {
@@ -104,24 +128,19 @@ func UpdateBalance(ctx context.Context, userID, amount int64) (err error) {
 	return nil
 }
 
-func InsertPayment(ctx context.Context, payment Payment) (int64, error) {
+func InsertPayment(ctx context.Context, payment Payment) (id int64, err error) {
 
-	result, err := db.ExecContext(ctx, queryInsertPayment,
+	err = db.QueryRowContext(ctx, queryInsertPayment,
 		payment.UserID,
 		payment.Amount,
 		payment.Status,
 		time.Now(),
-	)
+	).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 
-	paymentID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return paymentID, nil
+	return id, nil
 }
 
 func InsertBidCollection(ctx context.Context, bidCollection BidCollection) (err error) {
@@ -138,6 +157,86 @@ func InsertBidCollection(ctx context.Context, bidCollection BidCollection) (err 
 	}
 
 	return nil
+}
+
+func InsertAuctionDB(ctx context.Context, auction Auction) (err error) {
+
+	_, err = db.ExecContext(ctx, queryInsertAuction,
+		auction.ProductID,
+		auction.WinnerUserID,
+		auction.Multiplier,
+		auction.Status,
+		time.Now(),
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func InsertProductDB(ctx context.Context, product Product) (id int64, err error) {
+
+	err = db.QueryRowContext(ctx, queryInsertProduct,
+		product.UserID,
+		product.ProductName,
+		product.ImageURL,
+		product.Status,
+		time.Now(),
+	).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func GetAllAuction(ctx context.Context) (auctions []Auction, err error) {
+	rows, err := db.QueryContext(ctx, queryGetAllAuction)
+	if err != nil {
+		return []Auction{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var auction Auction
+		err = rows.Scan(&auction.ID,
+			&auction.ProductID,
+			&auction.WinnerUserID,
+			&auction.Multiplier,
+			&auction.Status)
+		if err != nil {
+			return []Auction{}, err
+		}
+
+		auctions = append(auctions, auction)
+	}
+
+	return auctions, nil
+}
+func GetAllProduct(ctx context.Context) (products []Product, err error) {
+	rows, err := db.QueryContext(ctx, queryGetAllProduct)
+	if err != nil {
+		return []Product{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var product Product
+		err = rows.Scan(
+			&product.ID,
+			&product.UserID,
+			&product.ProductName,
+			&product.ImageURL,
+			&product.Status,
+		)
+		if err != nil {
+			return products, err
+		}
+		products = append(products, product)
+	}
+
+	return products, nil
 }
 
 func GetUser(ctx context.Context, username, password string) (userData User, err error) {
@@ -183,6 +282,17 @@ const (
 			product_id = $1
 	`
 
+	queryGetAllAuction string = `
+	SELECT 
+		COALESCE(id, 0) as id,
+		COALESCE(product_id, 0) as product_id,
+		COALESCE(winner_user_id, 0) as winner_user_id,
+		COALESCE(multiplier, 0) as multiplier,
+		COALESCE("status", 0) as "status"
+	FROM 
+		auction;
+`
+
 	queryGetProduct string = `
 		SELECT 
 			COALESCE(id, 0) as id,
@@ -191,10 +301,34 @@ const (
 			COALESCE(image_url, '') as image_url,
 			COALESCE("status", 0) as "status"
 		FROM 
-			auction
+			product
 		WHERE 
-			user_id = $1
+			id = $1;
 	`
+
+	queryGetProductByUserID string = `
+	SELECT 
+		COALESCE(id, 0) as id,
+		COALESCE(user_id, 0) as user_id,
+		COALESCE(product_name, '') as product_name,
+		COALESCE(image_url, '') as image_url,
+		COALESCE("status", 0) as "status"
+	FROM 
+		product
+	WHERE 
+		user_id = $1;
+`
+
+	queryGetAllProduct string = `
+	SELECT 
+		COALESCE(id, 0) as id,
+		COALESCE(user_id, 0) as user_id,
+		COALESCE(product_name, '') as product_name,
+		COALESCE(image_url, '') as image_url,
+		COALESCE("status", 0) as "status"
+	FROM 
+		product;
+`
 
 	queryGetSumBidCollection string = `
 	SELECT 
@@ -234,6 +368,32 @@ const (
 			auction_id,
 			current_bid,
 			payment_id,
+			create_time
+		)
+	VALUES ($1, $2, $3, $4, $5)
+	`
+
+	queryInsertProduct string = `
+	INSERT INTO 
+		product (
+			user_id,
+			product_name,
+			image_url,
+			status,
+			create_time
+		)
+	VALUES ($1, $2, $3, $4, $5)
+	RETURNING
+		id
+	`
+
+	queryInsertAuction string = `
+	INSERT INTO 
+		auction (
+			product_id,
+			winner_user_id,
+			multiplier,
+			"status",
 			create_time
 		)
 	VALUES ($1, $2, $3, $4, $5)

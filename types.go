@@ -30,8 +30,10 @@ type Product struct {
 
 // ProductDetail table
 type ProductDetail struct {
-	Product Product
-	Auction Auction
+	Product       Product
+	Auction       Auction
+	HighestBidder User
+	Countdown     int64
 }
 
 // TimeWindow table
@@ -77,7 +79,6 @@ type (
 
 	GetAuctionDetailResponse struct {
 		ProductDetail ProductDetail
-		HighestBid    int64
 	}
 )
 
@@ -122,10 +123,10 @@ type (
 		ProductName     string
 		ProductImageURL string
 		StartBid        int64
-		Multiplier      int
+		Multiplier      int64
 		Date            time.Time
 		ShopID          string
-		UserID          string
+		UserID          int64
 	}
 
 	CreateAuctionResponse struct {
@@ -155,7 +156,7 @@ type (
 
 type (
 	UpdateScoreboardNSQ struct {
-		UserID, BidAmount int64
+		UserID, BidAmount, AuctionID int64
 	}
 )
 

@@ -35,3 +35,14 @@ Redis use cases
 - (get top) ZREVRANGE currentBid 0 0 withscores
 - TTL
 - 
+
+
+
+- user_id, sort
+
+// seller
+- get ke product (param user id)
+- get auction  (param product id)
+
+// buyer
+- get bid (without param, get all)
