@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis"
 )
@@ -32,6 +33,7 @@ func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (Get
 
 	var (
 		highestBidder User
+		highestBid    int64
 		userID        int64
 		err           error
 	)
@@ -41,16 +43,21 @@ func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (Get
 		return GetAuctionDetailResponse{}, err
 	}
 
-	productData, err := GetProductDB(ctx, request.UserID)
+	productData, err := GetProductDB(ctx, request.ProductID)
 	if err != nil {
 		return GetAuctionDetailResponse{}, err
 	}
 
 	// get timewindow
+	timeWindow, err := GetTimeWindowDB(ctx, auctionData.ID)
+	if err != nil {
+		return GetAuctionDetailResponse{}, err
+	}
 
-	resp := GetHighestBid(ctx, request.UserID, auctionData.ID)
+	resp := GetHighestBid(ctx, auctionData.ID)
 	if resp != nil {
 		for _, val := range resp.Val() {
+			highestBid = int64(val.Score)
 			userID, _ = itfToInt64(val.Member)
 		}
 		if userID > 0 {
@@ -66,7 +73,8 @@ func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (Get
 			Product:       productData,
 			Auction:       auctionData,
 			HighestBidder: highestBidder,
-			Countdown:     1000,
+			HighestBid:    highestBid,
+			Countdown:     (timeWindow.EndTime.UnixMilli() - time.Now().UnixMilli()),
 		},
 	}, nil
 }
@@ -77,6 +85,16 @@ func AuctionBidding(ctx context.Context, payload AuctionBidRequest) (response Au
 	auctionData, err := GetAuctionDB(ctx, payload.ProductID)
 	if err != nil {
 		return AuctionBidResponse{}, err
+	}
+
+	// Check for auction status; Auction should be deactivated if TW expired w cron
+	if auctionData.Status == AuctionStatusDeactivated {
+		return AuctionBidResponse{
+			ResultStatus: ResultStatus{
+				IsSuccess: false,
+				Message:   "Time's up guyz",
+			},
+		}, nil
 	}
 
 	// Multiplier validation
@@ -197,7 +215,7 @@ func CheckHighestBid(ctx context.Context, bid int64, userID int64, auctionID int
 		highestBid int64
 	)
 
-	response := GetHighestBid(ctx, userID, auctionID)
+	response := GetHighestBid(ctx, auctionID)
 	if response == nil {
 		fmt.Println("error GetHighestBid: nil")
 		return
@@ -223,7 +241,7 @@ func CheckHighestBid(ctx context.Context, bid int64, userID int64, auctionID int
 	return
 }
 
-func GetHighestBid(ctx context.Context, userID int64, auctionID int64) *redis.ZSliceCmd {
+func GetHighestBid(ctx context.Context, auctionID int64) *redis.ZSliceCmd {
 	key := fmt.Sprintf(redisKey, auctionID)
 	return RedisClient.ZRevRangeWithScores(key, 0, 0)
 }
@@ -284,7 +302,21 @@ func InsertAuction(ctx context.Context, auctionRequest CreateAuctionRequest) (Re
 		Status:     AuctionStatusActive, // harusnya ada cron buat activate; pas dibuat status unactivated
 	}
 
-	err = InsertAuctionDB(ctx, auction)
+	auctionID, err := InsertAuctionDB(ctx, auction)
+	if err != nil {
+		fmt.Println("got error: ", err)
+		return ResultStatus{
+			Message:   "Terjadi kesalahan",
+			IsSuccess: false,
+		}, nil
+	}
+
+	timeWindow := TimeWindow{
+		AuctionID: auctionID,
+		StartTime: auctionRequest.StartTime,
+		EndTime:   auctionRequest.EndTime,
+	}
+	err = InsertTWDB(ctx, timeWindow)
 	if err != nil {
 		fmt.Println("got error: ", err)
 		return ResultStatus{
@@ -328,12 +360,14 @@ func GetAuctionListSeller(ctx context.Context, userID int64) (response GetAuctio
 
 		var (
 			userID        int64
+			highestBid    int64
 			highestBidder User
 		)
 
-		resp := GetHighestBid(ctx, userID, auction.ID)
+		resp := GetHighestBid(ctx, auction.ID)
 		if resp != nil {
 			for _, val := range resp.Val() {
+				highestBid = int64(val.Score)
 				userID, _ = itfToInt64(val.Member)
 			}
 			if userID > 0 {
@@ -348,6 +382,7 @@ func GetAuctionListSeller(ctx context.Context, userID int64) (response GetAuctio
 			Product:       products[idx],
 			Auction:       auction,
 			HighestBidder: highestBidder,
+			HighestBid:    highestBid,
 		})
 	}
 
@@ -370,6 +405,8 @@ func itfToInt64(t interface{}) (int64, error) {
 func GetAuctionListBuyer(ctx context.Context) (response GetAuctionListResponse, err error) {
 	// get all auction
 	auctions, err := GetAllAuction(ctx)
+
+	fmt.Println(err, " 1 //")
 	if err != nil {
 		return GetAuctionListResponse{}, err
 	}
@@ -377,19 +414,24 @@ func GetAuctionListBuyer(ctx context.Context) (response GetAuctionListResponse, 
 	// TODO: improve this logic
 	for idx := range auctions {
 		product, err := GetProductDB(ctx, auctions[idx].ProductID)
+		fmt.Println(err, " 2")
+
 		if err != nil {
 			return GetAuctionListResponse{}, err
 		}
 
 		var (
 			userID        int64
+			highestBid    int64
 			highestBidder User
 		)
 
-		resp := GetHighestBid(ctx, userID, auctions[idx].ID)
+		resp := GetHighestBid(ctx, auctions[idx].ID)
 		if resp != nil {
 			for _, val := range resp.Val() {
+				highestBid = int64(val.Score)
 				userID, _ = itfToInt64(val.Member)
+				fmt.Println("uid:" + fmt.Sprint(userID))
 			}
 			if userID > 0 {
 				highestBidder, err = GetUserInfoDB(ctx, userID)
@@ -403,6 +445,7 @@ func GetAuctionListBuyer(ctx context.Context) (response GetAuctionListResponse, 
 			Product:       product,
 			Auction:       auctions[idx],
 			HighestBidder: highestBidder,
+			HighestBid:    highestBid,
 		})
 	}
 

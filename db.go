@@ -159,20 +159,20 @@ func InsertBidCollection(ctx context.Context, bidCollection BidCollection) (err 
 	return nil
 }
 
-func InsertAuctionDB(ctx context.Context, auction Auction) (err error) {
+func InsertAuctionDB(ctx context.Context, auction Auction) (id int64, err error) {
 
-	_, err = db.ExecContext(ctx, queryInsertAuction,
+	err = db.QueryRowContext(ctx, queryInsertAuction,
 		auction.ProductID,
 		auction.WinnerUserID,
 		auction.Multiplier,
 		auction.Status,
 		time.Now(),
-	)
+	).Scan(&id)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }
 
 func InsertProductDB(ctx context.Context, product Product) (id int64, err error) {
@@ -253,6 +253,36 @@ func GetUser(ctx context.Context, username, password string) (userData User, err
 	}
 
 	return userData, nil
+}
+
+func GetTimeWindowDB(ctx context.Context, auctionID int64) (timeWindow TimeWindow, err error) {
+	err = db.QueryRowContext(ctx, queryGeTimeWindow, auctionID).Scan(
+		&timeWindow.ID,
+		&timeWindow.AuctionID,
+		&timeWindow.StartTime,
+		&timeWindow.EndTime,
+		&timeWindow.Status,
+	)
+	if err != nil {
+		return TimeWindow{}, err
+	}
+
+	return timeWindow, nil
+}
+
+func InsertTWDB(ctx context.Context, tw TimeWindow) error {
+
+	err := db.QueryRowContext(ctx, queryInsertTimeWindow,
+		tw.AuctionID,
+		tw.StartTime,
+		tw.EndTime,
+		tw.Status,
+	)
+	if err != nil {
+		return err.Err()
+	}
+
+	return nil
 }
 
 const (
@@ -387,6 +417,21 @@ const (
 		id
 	`
 
+	queryInsertTimeWindow string = `
+	INSERT INTO 
+		timewindow (
+			auction_id,
+			start_time,
+			end_time,
+			status,
+			create_time,
+			update_time
+		)
+	VALUES ($1, $2, $3, $4, 'NOW()', 'NOW()')
+	RETURNING
+		id
+	`
+
 	queryInsertAuction string = `
 	INSERT INTO 
 		auction (
@@ -397,6 +442,7 @@ const (
 			create_time
 		)
 	VALUES ($1, $2, $3, $4, $5)
+	RETURNING id
 	`
 
 	queryGetUserLogin string = `
@@ -410,5 +456,18 @@ const (
 		"user"
 	WHERE 
 		username = $1 AND	password = $2
+`
+
+	queryGeTimeWindow string = `
+	SELECT 
+	COALESCE(id, 0) as id, 
+	COALESCE(auction_id, 0) as auction_id,
+	COALESCE(start_time, '0001-01-01T00:00:00Z'::timestamp) as start_time, 
+	COALESCE(end_time, '0001-01-01T00:00:00Z'::timestamp) as end_time,
+	COALESCE("status", 0) as "status"
+	FROM
+		"timewindow"
+	WHERE 
+		auction_id = $1;
 `
 )

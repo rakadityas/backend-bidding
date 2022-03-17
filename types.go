@@ -33,12 +33,14 @@ type ProductDetail struct {
 	Product       Product
 	Auction       Auction
 	HighestBidder User
+	HighestBid    int64
 	Countdown     int64
 }
 
 // TimeWindow table
 type TimeWindow struct {
 	ID        int64
+	AuctionID int64
 	StartTime time.Time
 	EndTime   time.Time
 	Status    int
@@ -74,7 +76,6 @@ type Payment struct {
 type (
 	GetAuctionDetailRequest struct {
 		ProductID int64
-		UserID    int64
 	}
 
 	GetAuctionDetailResponse struct {
@@ -124,7 +125,8 @@ type (
 		ProductImageURL string
 		StartBid        int64
 		Multiplier      int64
-		Date            time.Time
+		StartTime       time.Time
+		EndTime         time.Time
 		ShopID          string
 		UserID          int64
 	}

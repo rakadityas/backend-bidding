@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 DROP TABLE IF EXISTS timewindow;
 CREATE TABLE IF NOT EXISTS timewindow (
   id SERIAL PRIMARY KEY,
+  auction_id INT,
   start_time TIMESTAMP,
   end_time TIMESTAMP,
   "status" INT,
@@ -70,12 +71,13 @@ INSERT INTO product(user_id, product_name, image_url, "status", create_time, upd
 
 
 INSERT INTO "user" (user_type, username, "password", "status", create_time, balance) VALUES
-(1, 'testuser1', 'testuser1', 1, now(), 10000),
-(0, 'testuser2', 'testuser2', 1, now(), 10000);
+(1, 'testuser1', 'testuser1', 1, now(), 100000),
+(0, 'testuser2', 'testuser2', 1, now(), 100000);
 
 INSERT INTO auction (product_id, winner_user_id, multiplier, "status", create_time) VALUES
 (1, NULL, 10000, 1, now()),
-(2, NULL, 50000, 1, now());
+(2, NULL, 10000, 1, now());
 
-INSERT INTO timewindow (start_time, end_time, "status", create_time, update_time) VALUES
-('2022-02-23 11:01:34.581', '2025-02-23 11:01:34.581', 1, 'NOW()', 'NOW()');
+INSERT INTO timewindow (auction_id, start_time, end_time, "status", create_time, update_time) VALUES
+(1, '2022-02-23 11:01:34.581', '2022-03-19 11:01:34.581', 1, 'NOW()', 'NOW()'),
+(2, '2022-02-23 11:01:34.581', '2022-03-19 11:01:34.581', 1, 'NOW()', 'NOW()');

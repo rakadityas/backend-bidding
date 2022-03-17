@@ -102,15 +102,8 @@ func HandleGetAuctionDetail(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userID, err := strconv.ParseInt(req.FormValue("user_id"), 10, 64)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	request := &GetAuctionDetailRequest{
 		ProductID: productID,
-		UserID:    userID,
 	}
 
 	response, err := GetAuctionDetail(ctx, *request)

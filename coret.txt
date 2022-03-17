@@ -33,7 +33,7 @@
 Redis use cases
 - (new entry) ZADD --> ZADD BID [BID_VALUE] [USER_ID]
 - (get top) ZREVRANGE currentBid 0 0 withscores
-- TTL
+- no TTL; pas cron sweeping auction (deactivate) jalan, del key
 - 
 
 
