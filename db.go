@@ -113,7 +113,7 @@ func GetSumBidCollection(ctx context.Context, userID, auctionID int64) (highestB
 	err = db.QueryRowContext(ctx, queryGetSumBidCollection, userID, auctionID).Scan(
 		&highestBid,
 	)
-	if err != nil {
+	if err != nil && !IsMatchError(err, sql.ErrNoRows) {
 		return 0, err
 	}
 

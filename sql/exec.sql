@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS payment (
 );
 
 INSERT INTO product(user_id, product_name, image_url, "status", create_time, update_time) VALUES 
-(1, 'Dummy product 1', 'https://bit.ly/3tVq57y', 1, 'NOW()', 'NOW()'),
-(2, 'Dummy product 2', 'https://bit.ly/3MVCxwO', 1, 'NOW()', 'NOW()');
+(1, 'Dummy product 1', 'https://i.imgur.com/ibRuYT4.jpeg', 1, 'NOW()', 'NOW()'),
+(2, 'Dummy product 2', 'https://i.imgur.com/HcGL77B.jpeg', 1, 'NOW()', 'NOW()');
 
 
 INSERT INTO "user" (user_type, username, "password", "status", create_time, balance) VALUES
@@ -79,10 +79,3 @@ INSERT INTO auction (product_id, winner_user_id, multiplier, "status", create_ti
 
 INSERT INTO timewindow (start_time, end_time, "status", create_time, update_time) VALUES
 ('2022-02-23 11:01:34.581', '2025-02-23 11:01:34.581', 1, 'NOW()', 'NOW()');
-
-INSERT INTO bid_collection (user_id, auction_id, current_bid, payment_id, create_time, update_time) VALUES
-(2, 1, 10000, 1, 'NOW()', 'NOW()'),
-(2, 1, 20000, 2, 'NOW()', 'NOW()');
-
-INSERT INTO payment (user_id, amount, "status", create_time, update_time) VALUES
-(1, 10000, 1, 'NOW()', 'NOW()');

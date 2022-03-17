@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	RedisKey = `bid-%d`
+	redisKey = `bid-%d`
 
 	AuctionStatusUnactive    = 0
 	AuctionStatusActive      = 1
@@ -30,6 +30,12 @@ func GetUserInfo(ctx context.Context, userID int64) (User, error) {
 
 func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (GetAuctionDetailResponse, error) {
 
+	var (
+		highestBidder User
+		userID        int64
+		err           error
+	)
+
 	auctionData, err := GetAuctionDB(ctx, request.ProductID)
 	if err != nil {
 		return GetAuctionDetailResponse{}, err
@@ -40,28 +46,66 @@ func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (Get
 		return GetAuctionDetailResponse{}, err
 	}
 
+	// get timewindow
+
+	resp := GetHighestBid(ctx, request.UserID, auctionData.ID)
+	if resp != nil {
+		for _, val := range resp.Val() {
+			userID, _ = itfToInt64(val.Member)
+		}
+		if userID > 0 {
+			highestBidder, err = GetUserInfoDB(ctx, userID)
+			if err != nil {
+				return GetAuctionDetailResponse{}, err
+			}
+		}
+	}
+
 	return GetAuctionDetailResponse{
 		ProductDetail: ProductDetail{
-			Product:   productData,
-			Auction:   auctionData,
-			Countdown: 1000,
+			Product:       productData,
+			Auction:       auctionData,
+			HighestBidder: highestBidder,
+			Countdown:     1000,
 		},
 	}, nil
 }
 
 func AuctionBidding(ctx context.Context, payload AuctionBidRequest) (response AuctionBidResponse, err error) {
 
-	// get auction
+	// Get auction
 	auctionData, err := GetAuctionDB(ctx, payload.ProductID)
 	if err != nil {
 		return AuctionBidResponse{}, err
 	}
 
+	// Multiplier validation
+	if (payload.Amount % auctionData.Multiplier) != 0 {
+		return AuctionBidResponse{
+			ResultStatus: ResultStatus{
+				IsSuccess: false,
+				Message:   fmt.Sprintf("Hanya untuk kelipatan %d!", auctionData.Multiplier),
+			},
+		}, nil
+	}
+
+	// Get userinfo
 	userData, err := GetUserInfo(ctx, payload.UserID)
 	if err != nil {
 		return AuctionBidResponse{}, err
 	}
 
+	// Balance validation
+	if userData.Balance <= 0 {
+		return AuctionBidResponse{
+			ResultStatus: ResultStatus{
+				IsSuccess: false,
+				Message:   "Top up dulu bang!",
+			},
+		}, nil
+	}
+
+	// Get total sum of prev bid(s)
 	sumBid, err := GetSumBidCollection(ctx, payload.UserID, auctionData.ID)
 	if err != nil {
 		return AuctionBidResponse{}, err
@@ -80,8 +124,12 @@ func AuctionBidding(ctx context.Context, payload AuctionBidRequest) (response Au
 		}, nil
 	}
 
+	fmt.Println("SUMBID: ", sumBid)
+	fmt.Println("DDDD: ", deductedBalance)
+	fmt.Println("BID AMOUNT: ", bidAmount)
+
 	// deduct balance
-	err = UpdateBalance(ctx, userData.ID, bidAmount)
+	err = UpdateBalance(ctx, userData.ID, deductedBalance)
 	if err != nil {
 		return AuctionBidResponse{}, err
 	}
@@ -133,7 +181,7 @@ func AuctionBidding(ctx context.Context, payload AuctionBidRequest) (response Au
 	}
 
 	// this is supposed to use NSQ with max in flight 1 Update_Scoreboard
-	CheckHighestBid(ctx, bidAmount, payload.UserID, auctionData.ID)
+	CheckHighestBid(ctx, payload.Amount, payload.UserID, auctionData.ID)
 
 	return AuctionBidResponse{
 		ResultStatus: ResultStatus{
@@ -160,18 +208,23 @@ func CheckHighestBid(ctx context.Context, bid int64, userID int64, auctionID int
 	}
 
 	if bid > highestBid {
-		RedisClient.ZAdd(RedisKey,
+		cmd := RedisClient.ZAdd(fmt.Sprintf(redisKey, auctionID),
 			redis.Z{
 				Score:  float64(bid),
 				Member: userID,
 			})
+
+		if cmd.Err() != nil {
+			fmt.Println(cmd.Err().Error())
+			return
+		}
 	}
 
 	return
 }
 
 func GetHighestBid(ctx context.Context, userID int64, auctionID int64) *redis.ZSliceCmd {
-	key := fmt.Sprintf(RedisKey, auctionID)
+	key := fmt.Sprintf(redisKey, auctionID)
 	return RedisClient.ZRevRangeWithScores(key, 0, 0)
 }
 
@@ -354,4 +407,25 @@ func GetAuctionListBuyer(ctx context.Context) (response GetAuctionListResponse, 
 	}
 
 	return response, nil
+}
+
+func IsMatchError(err1 error, err2 error) bool {
+	if err1 == nil && err2 == nil {
+		return true
+	}
+
+	if err1 == nil {
+		err1 = errors.New("nil")
+	}
+
+	if err2 == nil {
+		err2 = errors.New("nil")
+	}
+
+	// for now comparing the message only, because if comparing errors will panic
+	if err1.Error() == err2.Error() {
+		return true
+	}
+
+	return false
 }
