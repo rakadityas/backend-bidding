@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS auction (
   id SERIAL PRIMARY KEY,
   product_id INT NOT NULL, 
   winner_user_id INT,
+  highest_bid INT,
+  initial_bid INT,
   multiplier INT NOT NULL,
   "status" INT NOT NULL,
   create_time TIMESTAMP,
@@ -74,9 +76,9 @@ INSERT INTO "user" (user_type, username, "password", "status", create_time, bala
 (1, 'testuser1', 'testuser1', 1, now(), 100000),
 (0, 'testuser2', 'testuser2', 1, now(), 100000);
 
-INSERT INTO auction (product_id, winner_user_id, multiplier, "status", create_time) VALUES
-(1, NULL, 10000, 1, now()),
-(2, NULL, 10000, 1, now());
+INSERT INTO auction (product_id, winner_user_id, initial_bid, highest_bid, multiplier, "status", create_time) VALUES
+(1, NULL, 1000, 0, 10000, 1, now()),
+(2, NULL, 1000, 0, 10000, 1, now());
 
 INSERT INTO timewindow (auction_id, start_time, end_time, "status", create_time, update_time) VALUES
 (1, '2022-02-23 11:01:34.581', '2022-03-19 11:01:34.581', 1, 'NOW()', 'NOW()'),

@@ -59,6 +59,8 @@ func GetAuctionDB(ctx context.Context, productID int64) (auction Auction, err er
 		&auction.ID,
 		&auction.ProductID,
 		&auction.WinnerUserID,
+		&auction.InitialBid,
+		&auction.HighestBid,
 		&auction.Multiplier,
 		&auction.Status,
 	)
@@ -164,6 +166,7 @@ func InsertAuctionDB(ctx context.Context, auction Auction) (id int64, err error)
 	err = db.QueryRowContext(ctx, queryInsertAuction,
 		auction.ProductID,
 		auction.WinnerUserID,
+		auction.InitialBid,
 		auction.Multiplier,
 		auction.Status,
 		time.Now(),
@@ -173,6 +176,19 @@ func InsertAuctionDB(ctx context.Context, auction Auction) (id int64, err error)
 	}
 
 	return id, nil
+}
+
+func UpdateAuctionBidDB(ctx context.Context, auction Auction) (err error) {
+
+	_, err = db.ExecContext(ctx, queryUpdateAuctionBid,
+		auction.WinnerUserID,
+		auction.HighestBid,
+		auction.ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func InsertProductDB(ctx context.Context, product Product) (id int64, err error) {
@@ -203,6 +219,8 @@ func GetAllAuction(ctx context.Context) (auctions []Auction, err error) {
 		err = rows.Scan(&auction.ID,
 			&auction.ProductID,
 			&auction.WinnerUserID,
+			&auction.InitialBid,
+			&auction.HighestBid,
 			&auction.Multiplier,
 			&auction.Status)
 		if err != nil {
@@ -304,6 +322,8 @@ const (
 			COALESCE(id, 0) as id,
 			COALESCE(product_id, 0) as product_id,
 			COALESCE(winner_user_id, 0) as winner_user_id,
+			COALESCE(initial_bid, 0) as initial_bid,
+			COALESCE(highest_bid, 0) as highest_bid,
 			COALESCE(multiplier, 0) as multiplier,
 			COALESCE("status", 0) as "status"
 		FROM 
@@ -317,6 +337,8 @@ const (
 		COALESCE(id, 0) as id,
 		COALESCE(product_id, 0) as product_id,
 		COALESCE(winner_user_id, 0) as winner_user_id,
+		COALESCE(initial_bid, 0) as initial_bid,
+		COALESCE(highest_bid, 0) as highest_bid,
 		COALESCE(multiplier, 0) as multiplier,
 		COALESCE("status", 0) as "status"
 	FROM 
@@ -437,12 +459,22 @@ const (
 		auction (
 			product_id,
 			winner_user_id,
+			initial_bid,
 			multiplier,
 			"status",
 			create_time
 		)
-	VALUES ($1, $2, $3, $4, $5)
+	VALUES ($1, $2, $3, $4, $5, $5)
 	RETURNING id
+	`
+
+	queryUpdateAuctionBid string = `
+	UPDATE auction
+	SET 
+		winner_user_id = $1,
+		highest_bid = $2
+	WHERE
+		id = $3
 	`
 
 	queryGetUserLogin string = `

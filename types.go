@@ -51,6 +51,8 @@ type Auction struct {
 	ID           int64
 	ProductID    int64
 	WinnerUserID int64
+	InitialBid   int64
+	HighestBid   int64
 	Multiplier   int64
 	Status       int
 }

@@ -230,6 +230,12 @@ func CheckHighestBid(ctx context.Context, bid int64, userID int64, auctionID int
 	}
 
 	if bid > highestBid {
+		UpdateAuctionBidDB(ctx, Auction{
+			ID:           auctionID,
+			WinnerUserID: userID,
+			HighestBid:   bid,
+		})
+
 		cmd := RedisClient.ZAdd(fmt.Sprintf(redisKey, auctionID),
 			redis.Z{
 				Score:  float64(bid),
