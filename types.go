@@ -168,3 +168,8 @@ type (
 		BidCollection BidCollection
 	}
 )
+
+type FirestoreAuction struct {
+	ID         int64   `firestore:"id,omitempty"`
+	CurrentBid float64 `firestore:"current_bid,omitempty"`
+}

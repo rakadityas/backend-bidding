@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/go-redis/redis"
 )
 
@@ -42,17 +43,20 @@ func GetAuctionDetail(ctx context.Context, request GetAuctionDetailRequest) (Get
 	if err != nil {
 		return GetAuctionDetailResponse{}, err
 	}
+	fmt.Println(auctionData)
 
 	productData, err := GetProductDB(ctx, request.ProductID)
 	if err != nil {
 		return GetAuctionDetailResponse{}, err
 	}
+	fmt.Println(productData)
 
 	// get timewindow
 	timeWindow, err := GetTimeWindowDB(ctx, auctionData.ID)
 	if err != nil {
 		return GetAuctionDetailResponse{}, err
 	}
+	fmt.Println(timeWindow)
 
 	resp := GetHighestBid(ctx, auctionData.ID)
 	if resp != nil {
@@ -238,6 +242,17 @@ func CheckHighestBid(ctx context.Context, bid int64, userID int64, auctionID int
 		}
 	}
 
+	fmt.Printf("%+v\n", clientFirestore)
+	_, err := clientFirestore.Collection("auction").Doc(fmt.Sprintf("%d", auctionID)).Update(ctx, []firestore.Update{
+		{
+			Path:  "current_bid",
+			Value: bid,
+		},
+	})
+	if err != nil {
+		return
+	}
+
 	return
 }
 
@@ -324,6 +339,11 @@ func InsertAuction(ctx context.Context, auctionRequest CreateAuctionRequest) (Re
 			IsSuccess: false,
 		}, nil
 	}
+
+	clientFirestore.Collection("auction").Doc(fmt.Sprintf("%d", auctionID)).Set(ctx, FirestoreAuction{
+		ID:         auctionID,
+		CurrentBid: 0.0,
+	})
 
 	return ResultStatus{
 		Message:   "Sukses",
